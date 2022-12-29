@@ -14,7 +14,7 @@ from pathlib import Path
 
 INFERENCE_MODE= 'text' # you can use 'image' or 'text'
 print(f'INFERENCE MODE: {INFERENCE_MODE}')
-DO_SAVE_PREDICTIONS = False
+DO_SAVE_PREDICTIONS = True
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

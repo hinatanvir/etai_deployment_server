@@ -1,4 +1,5 @@
 import torch
+import tensorflow as tf
 from PIL import Image
 from rest_framework import generics
 
@@ -14,13 +15,18 @@ from etai_deployment_server import settings
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, DetrImageProcessor, DetrForObjectDetection
 from transformers import SegformerForSemanticSegmentation, SegformerFeatureExtractor
+from transformers import BertTokenizer, BertForSequenceClassification,TFRobertaForSequenceClassification,RobertaTokenizerFast,DistilBertTokenizerFast,TFDistilBertForSequenceClassification
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def get_text_model():
     if settings.INFERENCE_MODE=='text':
-        return AutoTokenizer.from_pretrained("cardiffnlp/twitter-roberta-base-sentiment"), \
-               AutoModelForSequenceClassification.from_pretrained("cardiffnlp/twitter-roberta-base-sentiment")
+        #return AutoTokenizer.from_pretrained("cardiffnlp/twitter-roberta-base-sentiment"), \
+        #       AutoModelForSequenceClassification.from_pretrained("cardiffnlp/twitter-roberta-base-sentiment")
+        #return BertTokenizer.from_pretrained('bert-base-uncased',do_lower_case = True), \
+        #BertForSequenceClassification.from_pretrained('C:/Users/hinat/Documents/deployment_ai/etai_deployment_server/bert_old/')
+        return RobertaTokenizerFast.from_pretrained("roberta-base"), \
+        TFRobertaForSequenceClassification.from_pretrained('C:/Users/hinat/Documents/deployment_ai/etai_deployment_server/model_deployment/roberta_pretrained/')
     else:
         return None ,None
 
@@ -31,6 +37,8 @@ def get_image_model():
 
     else:
         return None ,None
+
+
 
 ### Example for Text based deployment
 class TextPredictionListCreate(generics.ListCreateAPIView):
@@ -56,11 +64,18 @@ class TextPredictionListCreate(generics.ListCreateAPIView):
         return " ".join(new_text)
 
     def infer(self, text):
-        encoded_input = self.tokenizer(self.preprocess(text), return_tensors='pt')
+        encoded_input = self.tokenizer(self.preprocess(text), return_tensors='tf')
         with torch.no_grad():
             output = self.model(**encoded_input)
-        scores = output[0][0].detach().numpy().tolist()
-        return {'labels':scores}
+        #scores = output[0][0].detach().numpy().tolist()
+        #scores = output[0][0].stop_gradient().numpy().tolist()
+        # Use tf.stop_gradient to prevent the gradient from flowing through the model
+        #output= tf.stop_gradient(output)
+        scores = output[0][0].numpy().tolist()
+        labels = ['not hate', 'offensive','implicit hate', 'explicit hate']
+
+        scores_dict = {k: v for k,v in zip(labels, scores)}
+        return {'labels':scores_dict}
 
 
 
@@ -106,7 +121,7 @@ class ImagePredictionListCreate(generics.ListCreateAPIView):
 
     def infer(self, image):
         img = self.preprocess(image)
-        inputs = self.extractor(images=img, return_tensors="pt")
+        inputs = self.extractor(images=img, return_tensors="tf")
         with torch.no_grad():
             outputs = self.model(**inputs)
         preds = self.process_logits(outputs, img)
