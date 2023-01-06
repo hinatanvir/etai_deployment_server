@@ -9,6 +9,7 @@ class TextPredictionSerializer(serializers.ModelSerializer):
     class Meta:
         model = TextPrediction
         fields = ['sample', 'prediction']
+        
 
 
 
